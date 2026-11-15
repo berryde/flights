@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-15T12:22:18+00:00",
+  "title": "Design System: Flights",
+  "extensions": {
+    "colorMeta": {
+      "sodium-yellow": { "role": "primary", "displayName": "Sodium Yellow", "canonical": "#ffc629", "tonalRamp": ["#2b2105", "#4a390a", "#6b5210", "#8a6a12", "#b98d17", "#ffc629", "#ffd866", "#fff1c7"] },
+      "sodium-deep": { "role": "primary", "displayName": "Sodium Deep", "canonical": "#8a6a12", "tonalRamp": ["#2b2105", "#4a390a", "#6b5210", "#8a6a12", "#b98d17", "#ffc629", "#ffd866", "#fff1c7"] },
+      "origin-white": { "role": "secondary", "displayName": "Origin White", "canonical": "#fff8e6", "tonalRamp": ["#3a372f", "#5e594c", "#857e6c", "#ada58f", "#d1c9b2", "#ece5d0", "#f8f1dd", "#fff8e6"] },
+      "housing": { "role": "neutral", "displayName": "Housing", "canonical": "#0b0b0a", "tonalRamp": ["#0b0b0a", "#141413", "#1b1a19", "#222120", "#2f2e2b", "#4d4b45", "#7a776d", "#b3afa3"] },
+      "rail": { "role": "neutral", "displayName": "Rail", "canonical": "#141413", "tonalRamp": ["#0b0b0a", "#141413", "#1b1a19", "#222120", "#2f2e2b", "#4d4b45", "#7a776d", "#b3afa3"] },
+      "card-top": { "role": "neutral", "displayName": "Card Top", "canonical": "#222120", "tonalRamp": ["#0b0b0a", "#141413", "#1b1a19", "#222120", "#2f2e2b", "#4d4b45", "#7a776d", "#b3afa3"] },
+      "card-bottom": { "role": "neutral", "displayName": "Card Bottom", "canonical": "#1b1a19", "tonalRamp": ["#0b0b0a", "#141413", "#1b1a19", "#222120", "#2f2e2b", "#4d4b45", "#7a776d", "#b3afa3"] },
+      "ink": { "role": "neutral", "displayName": "Warm Ink", "canonical": "#f1ece0", "tonalRamp": ["#2f2e2b", "#4d4b45", "#6f6b62", "#9a958a", "#b3afa3", "#d3cec1", "#ece7da", "#f1ece0"] },
+      "ink-dim": { "role": "neutral", "displayName": "Dim Ink", "canonical": "#6f6b62", "tonalRamp": ["#2f2e2b", "#4d4b45", "#6f6b62", "#9a958a", "#b3afa3", "#d3cec1", "#ece7da", "#f1ece0"] },
+      "label": { "role": "neutral", "displayName": "Label Grey", "canonical": "#9a958a", "tonalRamp": ["#2f2e2b", "#4d4b45", "#6f6b62", "#9a958a", "#b3afa3", "#d3cec1", "#ece7da", "#f1ece0"] },
+      "rule-line": { "role": "neutral", "displayName": "Rule Line", "canonical": "#262522" },
+      "tip-edge": { "role": "neutral", "displayName": "Tip Edge", "canonical": "#2c2b28" },
+      "key-disabled": { "role": "neutral", "displayName": "Key Disabled", "canonical": "#4b4842" },
+      "sea": { "role": "neutral", "displayName": "Sea", "canonical": "#0d0d0c" },
+      "land": { "role": "neutral", "displayName": "Bare Land", "canonical": "#232220", "tonalRamp": ["#0d0d0c", "#232220", "#3b3935", "#58554e", "#817d72", "#b5b1a5", "#ece7da"] },
+      "density-1": { "role": "neutral", "displayName": "Density 1 (under 3 destinations)", "canonical": "#3b3935" },
+      "density-2": { "role": "neutral", "displayName": "Density 2 (under 12)", "canonical": "#58554e" },
+      "density-3": { "role": "neutral", "displayName": "Density 3 (under 45)", "canonical": "#817d72" },
+      "density-4": { "role": "neutral", "displayName": "Density 4 (under 150)", "canonical": "#b5b1a5" },
+      "density-5-hub": { "role": "neutral", "displayName": "Hub Card (150+)", "canonical": "#ece7da" },
+      "dimmed-quiet": { "role": "neutral", "displayName": "Dimmed Card (quiet)", "canonical": "#2b2a27" },
+      "dimmed-busy": { "role": "neutral", "displayName": "Dimmed Card (busy)", "canonical": "#3b3935" }
+    },
+    "typographyMeta": {
+      "flap": { "displayName": "Flap", "purpose": "Every character on a flap tile; size derives from tile height (--fh = 1.45 x --fw)." },
+      "key": { "displayName": "Key", "purpose": "Uppercase key labels and the pager." },
+      "tip-title": { "displayName": "Tip Title", "purpose": "Airport name in the map tooltip, uppercase, sodium yellow." },
+      "body": { "displayName": "Body", "purpose": "The one-line status; 14px on phones; max 90ch." },
+      "column-label": { "displayName": "Column Label", "purpose": "Uppercase tracked headers above departure columns only." },
+      "small": { "displayName": "Small", "purpose": "Credit line and tooltip detail." }
+    },
+    "shadows": [
+      { "name": "caret-underline", "value": "inset 0 -3px 0 #ffc629", "purpose": "The search caret on the current flap tile; not an elevation shadow." }
+    ],
+    "motion": [
+      { "name": "cell-flip", "value": "170ms", "purpose": "One matrix cell flip, drawn as a hinge fold in the fragment shader." },
+      { "name": "flap-step", "value": "46ms", "purpose": "One drum card per DOM flap character; each half folds in 23ms." },
+      { "name": "fold-top-ease", "value": "cubic-bezier(.5,0,1,.6)", "purpose": "Old top half falling to -90deg." },
+      { "name": "fold-bottom-ease", "value": "cubic-bezier(0,.4,.5,1)", "purpose": "New bottom half swinging down from 90deg." },
+      { "name": "roll-cap", "value": "9 cards", "purpose": "Longest visible drum roll; longer distances skip ahead." },
+      { "name": "char-stagger", "value": "18ms (title 70ms)", "purpose": "Delay between characters in a flap row." },
+      { "name": "row-stagger", "value": "90ms per row + 40ms per column", "purpose": "Departure rows ripple down the board; just after a choice, first-page rows instead start 250ms before their cell lands." },
+      { "name": "time-true-ripple", "value": "1.7s", "purpose": "Destination cells flip with delay proportional to flight minutes; the longest lands at 1.7s." },
+      { "name": "trace-revert", "value": "1.6s", "purpose": "A landed ambient trace's cell returns to its density card." },
+      { "name": "key-ink", "value": "instant", "purpose": "Key ink turns sodium on hover and focus in one step; nothing on the board fades." },
+      { "name": "caret-blink", "value": "1s steps(1) infinite", "purpose": "Search caret; static under reduced motion." },
+      { "name": "reduced-motion", "value": "instant", "purpose": "Rolls, ripples and arcs swap instantly; ambient traces become a still sample at 35% alpha." },
+      { "name": "preview", "value": "each cell after its own landing", "purpose": "Pointing at a row flips the rest of the selection to sodium-deep and keeps the row's cells yellow." }
+    ],
+    "breakpoints": [
+      { "name": "phone", "value": "<700px", "purpose": "16px gutter, stacked head/status/footer, columns [10,3,5], tile 12-20px." },
+      { "name": "tablet", "value": "700px", "purpose": "40px gutter, columns [13,3,5,6], tile 14-26px." },
+      { "name": "desktop", "value": "1000px", "purpose": "Columns [17,3,5,9], tile 16-28px, 3-5 rows by height (960 / 1100px)." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Key",
+      "kind": "button",
+      "refersTo": "key",
+      "description": "The board's hardware button: a split flap card with uppercase condensed label.",
+      "html": "<button class=\"ds-key\">CLEAR</button>",
+      "css": ".ds-key { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 32px; padding: 0 12px; border: 0; border-radius: 2px; background: linear-gradient(#222120 50%, #0b0b0a 50% calc(50% + 1px), #1b1a19 calc(50% + 1px)); color: #f1ece0; font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; } .ds-key:hover, .ds-key:focus-visible { color: #ffc629; } .ds-key:focus-visible { outline: 2px solid #ffc629; outline-offset: 3px; } .ds-key:active { background: #1b1a19; }"
+    },
+    {
+      "name": "Icon Key",
+      "kind": "button",
+      "refersTo": "key",
+      "description": "Key carrying a drawn 16px square-capped stroke icon (prev/next/plus/minus/speaker on and off).",
+      "html": "<button class=\"ds-key-icon\" aria-label=\"Next page\"><svg viewBox=\"0 0 16 16\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"square\"><path d=\"M6 3l5 5-5 5\"/></svg></button>",
+      "css": ".ds-key-icon { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 32px; padding: 0 8px; border: 0; border-radius: 2px; background: linear-gradient(#222120 50%, #0b0b0a 50% calc(50% + 1px), #1b1a19 calc(50% + 1px)); color: #f1ece0; cursor: pointer; } .ds-key-icon:hover, .ds-key-icon:focus-visible { color: #ffc629; } .ds-key-icon:focus-visible { outline: 2px solid #ffc629; outline-offset: 3px; }"
+    },
+    {
+      "name": "Toggle Key (pressed)",
+      "kind": "button",
+      "refersTo": "key-pressed",
+      "description": "aria-pressed icon key, ink turns sodium when on: the sound key beside search.",
+      "html": "<button class=\"ds-key-toggle\" aria-pressed=\"true\">SOUND ON</button>",
+      "css": ".ds-key-toggle { height: 32px; padding: 0 12px; border: 0; border-radius: 2px; background: linear-gradient(#222120 50%, #0b0b0a 50% calc(50% + 1px), #1b1a19 calc(50% + 1px)); color: #f1ece0; font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; } .ds-key-toggle[aria-pressed=\"true\"], .ds-key-toggle:hover { color: #ffc629; }"
+    },
+    {
+      "name": "Flap Row",
+      "kind": "custom",
+      "refersTo": "flap-tile",
+      "description": "Fixed-width run of split-flap tiles: lighter top, darker bottom, housing hinge.",
+      "html": "<span class=\"ds-flaps\"><span class=\"ds-flap\">D</span><span class=\"ds-flap\">X</span><span class=\"ds-flap\">B</span><span class=\"ds-flap\"> </span></span>",
+      "css": ".ds-flaps { display: inline-flex; gap: 2px; padding: 8px; background: #0b0b0a; } .ds-flap { position: relative; width: 28px; height: 40px; line-height: 40px; text-align: center; border-radius: 2px; background: linear-gradient(#222120 50%, #0b0b0a 50% calc(50% + 1px), #1b1a19 calc(50% + 1px)); color: #f1ece0; font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 29.6px; font-variant-numeric: tabular-nums; white-space: pre; } .ds-flaps:hover .ds-flap { color: #ffc629; }"
+    },
+    {
+      "name": "Flap Row (active)",
+      "kind": "custom",
+      "refersTo": "flap-tile-active",
+      "description": "The active or previewed departure row: sodium ink on the same cards. Whole columns are never yellow.",
+      "html": "<span class=\"ds-flaps-active\"><span>1</span><span>2</span><span>7</span></span>",
+      "css": ".ds-flaps-active { display: inline-flex; gap: 2px; padding: 8px; background: #0b0b0a; } .ds-flaps-active > span { width: 28px; height: 40px; line-height: 40px; text-align: center; border-radius: 2px; background: linear-gradient(#222120 50%, #0b0b0a 50% calc(50% + 1px), #1b1a19 calc(50% + 1px)); color: #ffc629; font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 29.6px; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Departure Column Labels",
+      "kind": "custom",
+      "refersTo": "column-label",
+      "description": "Small tracked caps naming each departures column, sized to the column's flap width.",
+      "html": "<div class=\"ds-cols\"><span style=\"width:120px\">Destination</span><span style=\"width:60px\">Code</span><span>Time</span></div>",
+      "css": ".ds-cols { display: flex; gap: 22px; padding: 8px; background: #0b0b0a; font-family: 'Barlow', system-ui, sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: #9a958a; } .ds-cols span { flex: none; }"
+    },
+    {
+      "name": "Map Tooltip",
+      "kind": "card",
+      "refersTo": "tooltip",
+      "description": "Rail-coloured note over the matrix: yellow condensed title, ink and label lines.",
+      "html": "<div class=\"ds-tip\"><span class=\"ds-tip-title\">Dubai</span><span class=\"ds-tip-detail\">DXB · United Arab Emirates · 265 destinations</span><span class=\"ds-tip-more\">and 1 more airport</span></div>",
+      "css": ".ds-tip { display: grid; gap: 2px; max-width: 260px; padding: 8px 10px 9px; background: #141413; border: 1px solid #2c2b28; border-radius: 2px; font-family: 'Barlow', system-ui, sans-serif; font-weight: 500; } .ds-tip-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 20px; letter-spacing: 0.02em; text-transform: uppercase; color: #ffc629; } .ds-tip-detail, .ds-tip-more { font-size: 13px; line-height: 1.35; color: #f1ece0; } .ds-tip-more { color: #9a958a; }"
+    },
+    {
+      "name": "Status Line",
+      "kind": "nav",
+      "refersTo": "notice",
+      "description": "One line of label-grey prose with ink emphasis, rule above, contextual keys right.",
+      "html": "<div class=\"ds-status\"><p><b>Emirates</b> (EK) · <b>143</b> airports, <b>147</b> routes</p><button class=\"ds-status-key\">CLEAR</button></div>",
+      "css": ".ds-status { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 32px; padding: 10px 0 0; border-top: 1px solid #262522; background: #0b0b0a; font-family: 'Barlow', system-ui, sans-serif; } .ds-status p { margin: 0; font-size: 15px; font-weight: 500; line-height: 1.35; color: #9a958a; } .ds-status b { color: #f1ece0; font-weight: 600; } .ds-status-key { height: 32px; padding: 0 12px; border: 0; border-radius: 2px; background: linear-gradient(#222120 50%, #0b0b0a 50% calc(50% + 1px), #1b1a19 calc(50% + 1px)); color: #f1ece0; font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 15px; letter-spacing: 0.08em; cursor: pointer; } .ds-status-key:hover, .ds-status-key:focus-visible { color: #ffc629; }"
+    },
+    {
+      "name": "Density Cells",
+      "kind": "custom",
+      "refersTo": "land",
+      "description": "Matrix cells: square printed grey faces separated by housing, plus the selection roles.",
+      "html": "<div class=\"ds-cells\"><i style=\"background:#0d0d0c\"></i><i style=\"background:#232220\"></i><i style=\"background:#3b3935\"></i><i style=\"background:#58554e\"></i><i style=\"background:#817d72\"></i><i style=\"background:#b5b1a5\"></i><i style=\"background:#ece7da\"></i><i style=\"background:#2b2a27\"></i><i style=\"background:#8a6a12\"></i><i style=\"background:#ffc629\"></i><i style=\"background:#fff8e6\"></i></div>",
+      "css": ".ds-cells { display: inline-grid; grid-template-columns: repeat(11, 12px); gap: 2px; padding: 2px; background: #0b0b0a; } .ds-cells i { display: block; width: 12px; height: 12px; background-image: linear-gradient(rgba(255,255,255,0.05) 50%, rgba(0,0,0,0.07) 50%); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Departures Board",
+    "overview": "Everything on screen is part of one Solari split-flap board: a matte near-black housing that holds charcoal flap cards, warm-white printed ink, and a single sodium yellow for whatever is active right now. The world map is itself a matrix of square flap cells. Every cell is printed sea, bare land, or one of five grey airport-density cards, never a gradient, so the continents read before a single airport does. Text appears letter by letter on flap tiles that roll through the drum to reach their character. Every change of state is a flip: cells, letters and rows. Nothing fades or slides.\n\nDensity is high and the chrome is low. The board fills the viewport edge to edge inside a single gutter. The only surfaces are the housing, the cards and a slightly lighter rail for transient notes, and depth comes from the card's own construction: lighter above the hinge, darker below, with a hairline of housing between the halves. The visual rejection the build carries out is the category default of a dark glowing globe with neon arcs and every route drawn at once. Route lines are thin, flat and yellow, and they appear only for the current scene or a handful of ambient traces.",
+    "keyCharacteristics": ["One housing, charcoal cards, warm-white ink, one sodium yellow.", "Sea, land and five quantised grey density cards (plus two dimmed faces), like printed flaps.", "Every state change is a flip with a hinge; letters roll through the drum.", "Square map cells that move in whole cells when panned.", "Condensed signage caps on tiles and keys; small tracked caps only for column labels."],
+    "rules": [
+      {
+        "name": "The One Sodium Rule",
+        "body": "Yellow is reserved for what is active, selected, focused or in flight. It is never used for decoration, headings or static emphasis; static emphasis is warm ink on label grey.",
+        "section": "colors"
+      },
+      {
+        "name": "The Printed Card Rule",
+        "body": "The map uses its printed faces (sea, land, five density cards, two dimmed cards) and nothing in between. Never interpolate a ramp or add a hue to density.",
+        "section": "colors"
+      },
+      {
+        "name": "The Drum Rule",
+        "body": "Flap text is uppercase and limited to the drum's character set (space, A–Z, 0–9, `. - : / ' & + →`). Accents are stripped, and anything off the drum becomes a hyphen. Tiles are fixed-width runs: text is padded or cut to the column length and never wraps.",
+        "section": "typography"
+      },
+      {
+        "name": "The Signage Rule",
+        "body": "Barlow Condensed belongs to tiles, keys and the tooltip title. Running prose stays in Barlow at 13–15px.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hinge Rule",
+        "body": "Any surface that looks like a card (flap tile, matrix cell, key, favicon) has a split: lighter above the centre, darker below, and a housing-coloured hairline at the hinge. A key draws this as a hard-stop gradient, not a soft one.",
+        "section": "elevation"
+      }
+    ],
+    "dos": ["Do build every new surface from the housing, flap cards and the rail; nothing else exists on this board.", "Do reserve sodium yellow (#ffc629) for active, selected, focused or in-flight state.", "Do show map density with the quantised grey faces from the density palette, printed over the sea and land faces.", "Do make every state change a flip: a fold at the hinge for cells, a drum roll for letters, staggered row by row.", "Do keep the map in square cells that move in whole cells.", "Do swap state instantly under `prefers-reduced-motion` (no rolls, no ripple, static caret, still traces).", "Do credit the route data source in the footer, with the byline (runs in the browser, and the author) opposite it."],
+    "donts": ["Don't fade, slide or scale anything in or out; the board only flips.", "Don't add soft gradients, glass, glows or elevation shadows. The only gradient allowed is the hard-stop hinge split of a card.", "Don't round corners beyond 2px or use pills and circles; markers are square cells.", "Don't draw the whole route network at once or add a glowing globe; arcs belong only to the current scene or the few ambient traces.", "Don't introduce a second accent hue or tint the density cards.", "Don't set prose in Barlow Condensed or on flap tiles; tiles carry short uppercase values only."]
+  }
+}
