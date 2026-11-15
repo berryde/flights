@@ -1,0 +1,11 @@
+[project]
+name = "flights-pipeline"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "duckdb>=2.0.0",
+]
+
+[tool.uv]
+# Only resolve package versions that have been public for a couple of weeks.
+exclude-newer = "2026-10-27T00:00:00Z"
