@@ -21,6 +21,12 @@ SOURCES = {
         "https://raw.githubusercontent.com/Jonty/airline-route-data/master/airline_routes.json",
         DAY,
     ),
+    # Natural Earth 1:50m land polygons (public domain), for the map's land mask.
+    # Coastlines don't change, so this is fetched once; land.py rasterises it.
+    "ne_50m_land.geojson": (
+        "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson",
+        365 * DAY,
+    ),
 }
 
 

@@ -125,7 +125,7 @@ export class FlapGrid {
 		gl.uniform3fv(this.u.uHousing, hexToRgb(HOUSING));
 	}
 
-	/** Lay out a new grid. Every cell starts blank. */
+	/** Lay out a new grid. Every cell starts on palette face 0, the sea. */
 	resize(cols: number, rows: number, cellW: number, cellH: number, width: number, height: number, dpr: number) {
 		this.canvas.width = Math.round(width * dpr);
 		this.canvas.height = Math.round(height * dpr);

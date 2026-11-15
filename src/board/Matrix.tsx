@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Network } from "../data/network";
 import { FlapGrid } from "./FlapGrid";
 import { Icon } from "./Icon";
-import { C, densityColor } from "./palette";
+import { type Land, landCells, loadLand } from "./land";
+import { C, densityColor, dimColor } from "./palette";
 import { clatter } from "./sound";
 import { type Bins, type Grid, type View, bin, clampView, fitView, project, showsWholeWidth, wrapLon, zoomAt } from "./view";
 
@@ -34,6 +35,8 @@ const ROLE_COLOR: Record<Role, number> = { origin: C.origin, active: C.active, m
 const ROLE_RANK: Record<Role, number> = { origin: 3, active: 2, muted: 1 };
 
 const now = () => performance.now() / 1000;
+/** Seconds after a scene starts during which its ripple is still landing. */
+const RIPPLE_WINDOW = 2.5;
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function gridFor(width: number, height: number): Grid {
@@ -46,14 +49,16 @@ function gridFor(width: number, height: number): Grid {
 type Props = {
 	network: Network;
 	scene: Scene;
-	/** Airports to outline, such as the stops of the row under the pointer. */
+	/** Airports to preview, such as the stops of the row under the pointer: they stay lit while the rest of the selection steps down. */
 	highlight: number[];
 	describe: (airport: number) => { title: string; detail: string };
 	onPick: (airports: number[]) => void;
+	/** The airports in the cell under the pointer, or none. */
+	onHover?: (airports: number[]) => void;
 	ready: boolean;
 };
 
-export function Matrix({ network, scene, highlight, describe, onPick, ready }: Props) {
+export function Matrix({ network, scene, highlight, describe, onPick, onHover, ready }: Props) {
 	const wrapRef = useRef<HTMLDivElement>(null);
 	const glRef = useRef<HTMLCanvasElement>(null);
 	const inkRef = useRef<HTMLCanvasElement>(null);
@@ -97,22 +102,52 @@ export function Matrix({ network, scene, highlight, describe, onPick, ready }: P
 		ink.width = Math.round(size.w * devicePixelRatio);
 		ink.height = Math.round(size.h * devicePixelRatio);
 		setView((v) => (v && base ? clampView(grid, v, base) : base));
-		intro.current = true;
+		// The opening sweep plays once. A later resize repaints the new grid quickly instead,
+		// so a layout shift mid-selection never replays the board assembling itself.
 	}, [grid, size, base]);
+
+	// The land mask is small and arrives well before the routes; the board waits for it
+	// so the first sweep already shows the continents.
+	const [land, setLand] = useState<Land | null>(null);
+	useEffect(() => {
+		let live = true;
+		loadLand().then((l) => live && setLand(l));
+		return () => {
+			live = false;
+		};
+	}, []);
 
 	const bins: Bins | null = useMemo(
 		() => (grid && view ? bin(grid, view, lats, lons, network.destinations) : null),
 		[grid, view, lats, lons, network],
 	);
+	const ground = useMemo(() => (grid && view && land ? landCells(grid, view, land) : null), [grid, view, land]);
 
-	// Bring the selection into view when it lands off screen (zoomed in, or on a phone).
+	// The board frames each selection itself, unless the visitor has taken the view in hand:
+	// a small network zooms in to fill the board, a network that would split across the
+	// world's edge recentres on itself, and going back to rest undoes whatever it chose.
+	const auto = useRef(false);
 	useEffect(() => {
-		if (!grid || !base || scene.focus == null) return;
+		if (!grid || !base) return;
 		setView((v) => {
 			if (!v) return v;
-			// On a board narrower than the world (a phone, or zoomed in), centre on the
-			// selection's whole network so its routes don't fan off one edge.
-			if (!showsWholeWidth(grid, v) && scene.roles.size > 1) {
+			const untouched = auto.current || (v.dpc === base.dpc && v.lat === base.lat && v.lon === base.lon);
+			if (scene.focus == null) {
+				if (!auto.current) return v;
+				auto.current = false;
+				return base;
+			}
+			if (!untouched) return keepInView(v);
+			const chosen = frameScene(grid, base, network, scene) ?? centreScene(grid, base, network, scene) ?? keepInView(base);
+			auto.current = chosen.lon !== base.lon || chosen.lat !== base.lat || chosen.dpc !== base.dpc;
+			return chosen;
+		});
+
+		// On a board narrower than the world (a phone, or zoomed in), keep the selection on it.
+		function keepInView(v: View): View {
+			const focus = scene.focus!;
+			if (!showsWholeWidth(grid!, v) && scene.roles.size > 1) {
+				// Centre on the selection's whole network so its routes don't fan off one edge.
 				let x = 0;
 				let y = 0;
 				for (const airport of scene.roles.keys()) {
@@ -120,18 +155,18 @@ export function Matrix({ network, scene, highlight, describe, onPick, ready }: P
 					x += Math.cos(lon);
 					y += Math.sin(lon);
 				}
-				const origin = network.airports[scene.focus!];
+				const origin = network.airports[focus];
 				const mean = (Math.atan2(y, x) * 180) / Math.PI;
 				// Keep the origin itself on the board.
-				const offset = Math.max(-(grid.cols / 2 - 6) * v.dpc, Math.min((grid.cols / 2 - 6) * v.dpc, wrapLon(mean - origin.lon)));
-				return clampView(grid, { ...v, lon: origin.lon + offset, lat: origin.lat }, base);
+				const offset = Math.max(-(grid!.cols / 2 - 6) * v.dpc, Math.min((grid!.cols / 2 - 6) * v.dpc, wrapLon(mean - origin.lon)));
+				return clampView(grid!, { ...v, lon: origin.lon + offset, lat: origin.lat }, base!);
 			}
-			const a = network.airports[scene.focus!];
-			const p = project(grid, v, a.lat, a.lon)!;
+			const a = network.airports[focus];
+			const p = project(grid!, v, a.lat, a.lon)!;
 			const margin = 4;
-			if (p[0] > margin && p[0] < grid.cols - margin && p[1] > margin && p[1] < grid.rows - margin) return v;
-			return clampView(grid, { ...v, lon: a.lon, lat: a.lat }, base);
-		});
+			if (p[0] > margin && p[0] < grid!.cols - margin && p[1] > margin && p[1] < grid!.rows - margin) return v;
+			return clampView(grid!, { ...v, lon: a.lon, lat: a.lat }, base!);
+		}
 	}, [scene, grid, base, network]);
 
 	// At rest the board traces a rolling sample of real routes: each one draws out from
@@ -141,13 +176,16 @@ export function Matrix({ network, scene, highlight, describe, onPick, ready }: P
 	const ambientFrom = useRef(0);
 	const restColors = useRef<Uint8Array | null>(null);
 	const reverts = useRef<{ cell: number; at: number }[]>([]);
+	/** When each cell's scene flip lands (board time), so a preview never cuts a ripple short. */
+	const landAt = useRef<Float32Array | null>(null);
+	const previewed = useRef<string | null>(null);
 	const resting = scene.key === "none";
 
 	// Work out every cell's colour, and when it should flip.
 	const paint = useCallback(
 		(mode: "scene" | "view") => {
 			const g = flaps.current;
-			if (!g || !grid || !bins) return;
+			if (!g || !grid || !bins || !ground) return;
 			const t = now();
 			const size = grid.cols * grid.rows;
 			const colors = new Uint8Array(size);
@@ -174,7 +212,10 @@ export function Matrix({ network, scene, highlight, describe, onPick, ready }: P
 			for (let c = 0; c < size; c++) {
 				if (roleRank[c]) continue;
 				const w = bins.weight[c];
-				colors[c] = w <= 0 ? C.blank : scene.dimFrom != null ? C.dim : densityColor(w);
+				// Sea and empty land never change; airports outside a selection drop a step,
+				// keeping the coasts and the big hubs readable around it.
+				if (w <= 0) colors[c] = ground[c] ? C.land : C.sea;
+				else colors[c] = scene.dimFrom != null ? dimColor(w) : densityColor(w);
 			}
 
 			if (!instant) {
@@ -182,7 +223,8 @@ export function Matrix({ network, scene, highlight, describe, onPick, ready }: P
 					// First paint: the board sweeps in left to right, each column's cards a little out of step.
 					for (let c = 0; c < size; c++) delays[c] = (c % grid.cols) * (1.1 / grid.cols) + Math.random() * 0.25;
 					intro.current = false;
-				} else if (mode === "scene") {
+				} else if (mode === "scene" || (scene.dimFrom != null && t - sceneStart.current < RIPPLE_WINDOW)) {
+					// (A repaint while a scene is still landing keeps the scene's own clock.)
 					const elapsed = t - sceneStart.current;
 					// Lit airports flip on the scene's own clock (flight time, for an airport's routes);
 					// everything else ripples out from the origin.
@@ -203,6 +245,9 @@ export function Matrix({ network, scene, highlight, describe, onPick, ready }: P
 				}
 			}
 			restColors.current = colors;
+			landAt.current = new Float32Array(size);
+			for (let c = 0; c < size; c++) landAt.current[c] = t + (instant ? 0 : delays[c]);
+			previewed.current = null;
 			ambient.current = [];
 			// Let the board settle before the traces start.
 			ambientFrom.current = t + (instant ? 0 : introPaint ? 1.5 : 0.6);
@@ -211,7 +256,7 @@ export function Matrix({ network, scene, highlight, describe, onPick, ready }: P
 			clatter(changing);
 			g.set(colors, t, delays);
 		},
-		[grid, bins, scene],
+		[grid, bins, ground, scene],
 	);
 
 	// A new scene restarts the clock; the arcs and ripple time from here.
@@ -225,6 +270,32 @@ export function Matrix({ network, scene, highlight, describe, onPick, ready }: P
 		} else paint("view");
 		kick();
 	}, [paint, ready]);
+
+	// Preview: while a row (or a cell) is pointed at, the rest of the selection steps down to
+	// sodium-deep and the previewed airports stay yellow. Each cell waits for its own landing.
+	const previewSet = useMemo(() => new Set(resting ? [] : highlight), [highlight, resting]);
+	useEffect(() => {
+		const g = flaps.current;
+		const base = restColors.current;
+		if (!ready || !g || !bins || !base || resting) return;
+		const key = [...previewSet].sort().join(",");
+		if (key === (previewed.current ?? "")) return;
+		previewed.current = key;
+		const colors = base.slice();
+		if (previewSet.size) {
+			const keep = new Set<number>();
+			for (const a of previewSet) if (bins.cellOf[a] >= 0) keep.add(bins.cellOf[a]);
+			for (const [airport, role] of scene.roles) {
+				const c = bins.cellOf[airport];
+				if (c < 0 || role === "origin" || colors[c] === C.origin) continue;
+				colors[c] = keep.has(c) ? C.active : C.muted;
+			}
+		}
+		const t = now();
+		const lands = landAt.current;
+		g.set(colors, t, (c) => (lands ? Math.max(0, lands[c] - t) : 0) + (reducedMotion() ? 0 : Math.random() * 0.05));
+		kick();
+	}, [previewSet, bins, scene, ready, resting]);
 
 	// The ink layer: routes, drawn on along their great circles.
 	const arcPaths = useMemo(() => {
@@ -253,13 +324,19 @@ export function Matrix({ network, scene, highlight, describe, onPick, ready }: P
 		const instant = reducedMotion();
 		let animating = false;
 		const order = ["faint", "normal", "focus"] as const;
+		// A preview draws the pointed-at routes solid and pushes the others back.
+		const weightOf = (arc: Arc) => {
+			if (!previewSet.size) return arc.weight;
+			const hit = previewSet.size === 1 ? previewSet.has(arc.to) || previewSet.has(arc.from) : previewSet.has(arc.to) && previewSet.has(arc.from);
+			return hit ? "focus" : "faint";
+		};
 		for (const weight of order) {
 			ctx.strokeStyle = weight === "faint" ? "rgba(255,198,41,0.16)" : weight === "normal" ? "rgba(255,198,41,0.5)" : "#ffc629";
 			ctx.lineWidth = (weight === "focus" ? 2 : weight === "normal" ? 1 : 0.75) / sx;
 			ctx.beginPath();
 			const tips: [number, number][] = [];
 			scene.arcs.forEach((arc, k) => {
-				if (arc.weight !== weight) return;
+				if (weightOf(arc) !== weight) return;
 				const xy = arcPaths[k];
 				if (!xy) return;
 				const progress = instant ? 1 : Math.min(1, Math.max(0, (elapsed - arc.delay) / arc.duration));
@@ -385,11 +462,11 @@ export function Matrix({ network, scene, highlight, describe, onPick, ready }: P
 			ctx.lineWidth = 1.5 * dpr;
 			ctx.strokeRect(x - 1.5 * dpr, y - 1.5 * dpr, sx + 3 * dpr, sy + 3 * dpr);
 		};
-		if (bins) for (const a of highlight) if (bins.cellOf[a] >= 0) outline(bins.cellOf[a], "#ffc629");
+		if (bins) for (const a of highlight) if (bins.cellOf[a] >= 0) outline(bins.cellOf[a], resting ? "#ffc629" : "#fff8e6");
 		if (hover) outline(hover.cell, "#fff8e6");
 
 		return animating || t < g.busyUntil;
-	}, [grid, size, scene, arcPaths, bins, highlight, hover, resting, view, network]);
+	}, [grid, size, scene, arcPaths, bins, highlight, previewSet, hover, resting, view, network]);
 
 	const kick = useCallback(() => {
 		cancelAnimationFrame(raf.current);
@@ -425,6 +502,7 @@ export function Matrix({ network, scene, highlight, describe, onPick, ready }: P
 	const zoom = useCallback(
 		(factor: number, at?: { x: number; y: number }) => {
 			if (!grid || !base) return;
+			auto.current = false;
 			setView((v) => (v ? zoomAt(grid, v, base, factor, at?.x ?? grid.cols / 2, at?.y ?? grid.rows / 2) : v));
 		},
 		[grid, base],
@@ -474,8 +552,10 @@ export function Matrix({ network, scene, highlight, describe, onPick, ready }: P
 		}
 		const dx = (e.clientX - d.x) / grid.cellW;
 		const dy = (e.clientY - d.y) / grid.cellH;
-		if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 5) return;
+		// A finger wobbles more than a mouse: don't turn a tap into a pan.
+		if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) < (e.pointerType === "mouse" ? 5 : 10)) return;
 		d.moved = true;
+		auto.current = false;
 		setHover(null);
 		// The board moves in whole cells, like a display, not a sliding picture.
 		const next = clampView(
@@ -517,11 +597,16 @@ export function Matrix({ network, scene, highlight, describe, onPick, ready }: P
 		const k = keys[e.key];
 		if (k) {
 			e.preventDefault();
+			auto.current = false;
 			k();
 		}
 	};
 
 	const tip = hover && bins ? airportsIn(hover.cell) : [];
+	const hoverKey = tip.join(",");
+	const hoverRef = useRef(onHover);
+	hoverRef.current = onHover;
+	useEffect(() => hoverRef.current?.(hoverKey ? hoverKey.split(",").map(Number) : []), [hoverKey]);
 	const tipInfo = tip.length ? describe(tip[0]) : null;
 	const zoomLevel = view && base ? Math.round(base.dpc / view.dpc) : 1;
 
@@ -567,22 +652,50 @@ export function Matrix({ network, scene, highlight, describe, onPick, ready }: P
 					</div>
 				)}
 			</div>
-			<div className="matrix-controls" aria-label="Map zoom">
+			<div className="matrix-controls" role="group" aria-label="Map zoom">
+				{/* Only offered once there's something to undo; it sits left so + and − never move. */}
+				{zoomLevel > 1 && (
+					<button type="button" className="key key-wide" onClick={() => {
+							auto.current = false;
+							if (base) setView(base);
+						}}>
+						Whole world
+					</button>
+				)}
 				<button type="button" className="key" onClick={() => zoom(2)} aria-label="Zoom in" disabled={zoomLevel >= 32}>
 					<Icon name="plus" />
 				</button>
 				<button type="button" className="key" onClick={() => zoom(0.5)} aria-label="Zoom out" disabled={zoomLevel <= 1}>
 					<Icon name="minus" />
 				</button>
-				<button type="button" className="key key-wide" onClick={() => base && setView(base)} disabled={zoomLevel <= 1}>
-					World
-				</button>
 			</div>
 		</div>
 	);
 }
 
+/**
+ * A route's path in fractional cells, ending exactly on the centres of its two airports' cells.
+ * The cells are the airports' grid squares, not their exact positions, so the ends are pulled to
+ * the cell and the correction eased along the line: zoomed in, an arc lands on its card instead
+ * of beside it, and an airport's fan of routes meets at its card's centre.
+ */
 export function routePath(grid: Grid, view: View, network: Network, from: number, to: number): Float32Array {
+	const xy = rawRoutePath(grid, view, network, from, to);
+	const n = xy.length / 2;
+	// Points are drawn at +0.5, so a stored whole number is a cell centre.
+	const sx = Math.floor(xy[0]) - xy[0];
+	const sy = Math.floor(xy[1]) - xy[1];
+	const ex = Math.floor(xy[(n - 1) * 2]) - xy[(n - 1) * 2];
+	const ey = Math.floor(xy[(n - 1) * 2 + 1]) - xy[(n - 1) * 2 + 1];
+	for (let i = 0; i < n; i++) {
+		const t = i / (n - 1);
+		xy[i * 2] += sx * (1 - t) + ex * t;
+		xy[i * 2 + 1] += sy * (1 - t) + ey * t;
+	}
+	return xy;
+}
+
+function rawRoutePath(grid: Grid, view: View, network: Network, from: number, to: number): Float32Array {
 		const a = network.airports[from];
 		const b = network.airports[to];
 		const pts = greatCircle(a.lat, a.lon, b.lat, b.lon);
@@ -643,4 +756,65 @@ function greatCircle(lat1: number, lon1: number, lat2: number, lon2: number, ste
 		out.push([Math.atan2(z, Math.hypot(x, y)) / r, Math.atan2(y, x) / r]);
 	}
 	return out;
+}
+
+/** Zoom in on a selection that only covers a small patch of the board, in whole steps up to 8×. */
+function frameScene(grid: Grid, base: View, network: Network, scene: Scene): View | null {
+	if (scene.focus == null || scene.roles.size < 2) return null;
+	const origin = network.airports[scene.focus];
+	let west = Infinity;
+	let east = -Infinity;
+	let south = Infinity;
+	let north = -Infinity;
+	for (const airport of scene.roles.keys()) {
+		const a = network.airports[airport];
+		const dx = wrapLon(a.lon - origin.lon);
+		west = Math.min(west, dx);
+		east = Math.max(east, dx);
+		south = Math.min(south, a.lat);
+		north = Math.max(north, a.lat);
+	}
+	const w = (east - west) / base.dpc;
+	const h = (north - south) / base.dpc;
+	let zoom = 1;
+	// Leave a margin: the network takes at most 60% of the board either way.
+	while (zoom < 8 && w * zoom * 2 <= grid.cols * 0.6 && h * zoom * 2 <= grid.rows * 0.6) zoom *= 2;
+	if (zoom < 2) return null;
+	return clampView(grid, { dpc: base.dpc / zoom, lon: origin.lon + (west + east) / 2, lat: (south + north) / 2 }, base);
+}
+
+/**
+ * On a board showing the whole world, pick the centre longitude that splits the fewest of the
+ * scene's routes across the edge: usually the default, but a Pacific network centres on the Pacific.
+ */
+function centreScene(grid: Grid, base: View, network: Network, scene: Scene): View | null {
+	if (!showsWholeWidth(grid, base) || !scene.arcs.length) return null;
+	let x = 0;
+	let y = 0;
+	for (const airport of scene.roles.keys()) {
+		const lon = (network.airports[airport].lon * Math.PI) / 180;
+		x += Math.cos(lon);
+		y += Math.sin(lon);
+	}
+	const mean = (Math.atan2(y, x) * 180) / Math.PI;
+	const paths = scene.arcs.map((arc) => {
+		const a = network.airports[arc.from];
+		const b = network.airports[arc.to];
+		return greatCircle(a.lat, a.lon, b.lat, b.lon, 24).map(([, lon]) => lon);
+	});
+	const splits = (centre: number) => {
+		let n = 0;
+		for (const lons of paths)
+			for (let i = 1; i < lons.length; i++)
+				if (Math.abs(wrapLon(lons[i] - centre) - wrapLon(lons[i - 1] - centre)) > 180) {
+					n++;
+					break;
+				}
+		return n;
+	};
+	const here = splits(base.lon);
+	if (here === 0) return null;
+	// Whole-cell steps keep the board's cells where they'd be.
+	const centre = base.lon + Math.round(wrapLon(mean - base.lon) / base.dpc) * base.dpc;
+	return splits(centre) < here ? clampView(grid, { ...base, lon: centre }, base) : null;
 }

@@ -73,6 +73,8 @@ a:hover {
 	height: 100dvh;
 	display: grid;
 	grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+	/* Content never widens the board; long label rows clip instead. */
+	grid-template-columns: minmax(0, 1fr);
 	padding: calc(var(--gutter) * 0.7) var(--gutter) calc(var(--gutter) * 0.5);
 	gap: 14px;
 	box-sizing: border-box;
@@ -84,6 +86,13 @@ a:hover {
 	justify-content: space-between;
 	gap: 24px;
 }
+.head-title,
+.head-search {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
 .board-title {
 	margin: 0;
 	line-height: 0;
@@ -94,7 +103,8 @@ a:hover {
 	align-items: center;
 	justify-content: space-between;
 	gap: 16px;
-	min-height: 32px;
+	/* Room for a row of keys even when there are none, so choosing something never resizes the map. */
+	min-height: calc(32px + 10px + 1px);
 	border-top: 1px solid #262522;
 	padding-top: 10px;
 }
@@ -317,7 +327,7 @@ a:hover {
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
 	cursor: pointer;
-	transition: background-color 120ms ease-out, color 120ms ease-out;
+	/* No fade: like everything on the board, a key changes state in one step. */
 }
 .key-wide {
 	padding: 0 12px;
@@ -325,9 +335,6 @@ a:hover {
 .key svg {
 	width: 16px;
 	height: 16px;
-}
-.key:hover:not(:disabled) {
-	color: var(--yellow);
 }
 .key:active:not(:disabled) {
 	background: var(--card-bottom);
@@ -349,6 +356,7 @@ a:hover {
 .departures {
 	position: relative;
 	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	gap: 6px;
 }
 .departures-labels {
@@ -362,6 +370,28 @@ a:hover {
 }
 .departures-labels span {
 	flex: none;
+	overflow: hidden;
+	white-space: nowrap;
+}
+.departures-labels {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+}
+.departures-head {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 16px;
+}
+.pager-keys {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+}
+.departures-rows + .pager-keys {
+	justify-self: end;
 }
 .departures-rows {
 	display: grid;
@@ -381,22 +411,47 @@ a:hover {
 	line-height: 0;
 	text-align: left;
 }
+.airline-keys {
+	display: inline-flex;
+	flex: none;
+	gap: var(--fgap);
+}
+.airline-key {
+	position: relative;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: inherit;
+	line-height: 0;
+	cursor: pointer;
+}
+/* A code is its own key: pointing at it underlines it, like the search caret. */
+.airline-key:hover::after,
+.airline-key:focus-visible::after {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: -4px;
+	height: 3px;
+	background: var(--yellow);
+}
 .departure:disabled {
 	cursor: default;
 }
-.departure:hover:not(:disabled) .flap,
-.departure:focus-visible .flap {
+.departure-row {
+	display: flex;
+	gap: calc(var(--fw) * 0.8);
+	line-height: 0;
+}
+/* The row lights as one: its own button and its airline keys alike. */
+.departure-row:not(.is-empty):hover .flap,
+.departure-row:has(.departure:focus-visible) .flap,
+.departure-row.is-previewed .flap {
 	color: var(--yellow);
 }
-.departure.tone-active .flap,
-.is-selection .departure.tone-active .flaps-time .flap {
+.departure-row.tone-active .flap {
 	color: var(--yellow);
-}
-.is-selection .departure .flaps-time .flap {
-	color: var(--yellow);
-}
-.is-selection .departure:not(.tone-active):hover .flaps-time .flap {
-	color: var(--ink);
 }
 .departures-empty {
 	position: absolute;
@@ -422,14 +477,15 @@ a:hover {
 	font-size: 13px;
 	color: var(--label);
 }
-.foot-keys {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	flex-shrink: 0;
+.byline {
+	text-align: right;
+}
+.byline a {
+	white-space: nowrap;
 }
 .pager {
-	min-width: 52px;
+	min-width: 84px;
+	text-transform: uppercase;
 	text-align: center;
 	font-family: "Barlow Condensed", sans-serif;
 	font-weight: 600;
@@ -454,6 +510,7 @@ a:hover {
 		flex-direction: column;
 		align-items: stretch;
 		gap: 8px;
+		min-height: 0;
 	}
 	.status p {
 		font-size: 14px;
@@ -462,15 +519,39 @@ a:hover {
 		flex-wrap: wrap;
 	}
 	.board-foot {
-		flex-direction: column-reverse;
+		flex-direction: column;
 		align-items: stretch;
-		gap: 8px;
-	}
-	.foot-keys {
-		justify-content: space-between;
+		gap: 4px;
 	}
 	.credit {
 		font-size: 12px;
+	}
+	.byline {
+		text-align: left;
+	}
+}
+
+/* Fingers, not pointers: keys big enough to hit, and each row's tap area fills the space
+   between rows so a slightly-off tap still lands on a row. */
+@media (pointer: coarse) {
+	.key {
+		height: 40px;
+		min-width: 44px;
+	}
+	.departures-rows {
+		gap: 10px;
+	}
+	.departure {
+		position: relative;
+	}
+	.departure::before {
+		content: "";
+		position: absolute;
+		inset: -5px 0;
+	}
+	.search-input {
+		inset: -10px 0;
+		height: auto;
 	}
 }
 

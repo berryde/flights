@@ -4,6 +4,8 @@ const PATHS = {
 	minus: "M3 8h10",
 	prev: "M10 3 5 8l5 5",
 	next: "M6 3l5 5-5 5",
+	soundOn: "M2 6h3l4-3v10l-4-3H2zM11.5 6a3 3 0 0 1 0 4M13 4a6 6 0 0 1 0 8",
+	soundOff: "M2 6h3l4-3v10l-4-3H2zM11.5 6l4 4M15.5 6l-4 4",
 } as const;
 
 export function Icon({ name }: { name: keyof typeof PATHS }) {

@@ -96,6 +96,9 @@ export function buildNetwork({ catalog, routes }: FlightData) {
 		destinations[a] = count;
 	}
 
+	/** Routes out of each airport, one per airline per destination: the measure the catalog ranks by. */
+	const routesFrom = (a: number) => fromStart[a + 1] - fromStart[a];
+
 	// Rows per airline, as a CSR index.
 	const airlineCount = airlines.length;
 	const airlineStart = new Uint32Array(airlineCount + 1);
@@ -261,6 +264,7 @@ export function buildNetwork({ catalog, routes }: FlightData) {
 		airports,
 		airlines,
 		destinations,
+		routesFrom,
 		airlineRouteCount,
 		legsFrom,
 		airlineNetwork,
